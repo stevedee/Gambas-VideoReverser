@@ -1,0 +1,192 @@
+' Gambas class file
+
+'*************************************************************************
+'A very simple program to reverse the play direction of a video.
+'This video can also be slowed down or speeded-up!
+'
+'Requires mplayer, ffmpeg, sox
+'
+'
+'May 2017
+'SteveDee
+'-------------------------------------------------------------------------
+
+Const VIDEO_PLAYER As String = "mplayer"    'or "gnome-mplayer" or "cvlc" or whatever    'our chosen video player
+
+Const TEMP_DIR As String = "/temp"      'create temp files here
+Const GET_PROPERTIES As String = "mplayer -vo null -ao null -identify -frames 0 "
+Const NO_AUDIO As String = "no sound"
+Const AUDIO_CODEC As String = "ID_AUDIO_CODEC"
+Const DEMUXER As String = "ID_DEMUXER"
+Const VIDEO_FORMAT As String = "ID_VIDEO_FORMAT"
+Const VIDEO_WIDTH As String = "ID_VIDEO_WIDTH"
+Const VIDEO_HEIGHT As String = "ID_VIDEO_HEIGHT"
+Const VIDEO_BITRATE As String = "ID_VIDEO_BITRATE"
+Const FRAME_RATE As String = "ID_VIDEO_FPS"
+
+Public blnAudio As Boolean      'if true video contains audio track(s)
+Public strFrameRate As String
+
+Public strNameOfRevVideo As String    'the output file path+name
+
+
+Public Sub Form_Open()
+
+  fileCh.Dir = User.Home & "/Videos"    'as good a default directory as any
+  With lblStatus
+    .Left = 0
+    .Width = Me.Width
+    .Visible = True
+  End With
+End
+
+
+Public Sub btnProperties_Click()
+Dim strFileName As String
+Dim strNameNoExt As String
+Dim strProps As String
+
+  lstProperties.Clear
+  Me.Text = "a Video Reverser " & Application.Version
+  lblStatus.Foreground = Color.Black
+  lblStatus.Text = "Video properties..."
+  
+  Exec ["mplayer", "-vo", "null", "-ao", "null", "-identify", "-frames", "0", fileCh.SelectedPath] Wait To strProps
+
+  TextArea1.Text = strProps
+  If InStr(strProps, NO_AUDIO) > 0 Then
+    blnAudio = False
+    lstProperties.Add("NO AUDIO")
+    chkAudio.Enabled = False
+  Else
+    blnAudio = True
+    chkAudio.Enabled = True
+    lstProperties.Add("Audio codec: " & FindParameters(AUDIO_CODEC, strProps))
+  Endif
+  lstProperties.Add("Demuxer: " & FindParameters(DEMUXER, strProps))
+  lstProperties.Add("Video format: " & FindParameters(VIDEO_FORMAT, strProps))
+  lstProperties.Add("Video size: " & FindParameters(VIDEO_WIDTH, strProps) & " x " & FindParameters(VIDEO_HEIGHT, strProps))
+  lstProperties.Add("Video bitrate: " & FindParameters(VIDEO_BITRATE, strProps) & " bps")
+  strFrameRate = FindParameters(FRAME_RATE, strProps)
+  lstProperties.Add("Frame rate: " & strFrameRate & " fps")
+  btnReverse.Enabled = True
+Catch
+  Me.Text = "Error!"
+  lblStatus.Text = Error.Text
+End
+
+
+
+Public Function FindParameters(strParam As String, strProperties As String) As String
+
+  If InStr(StrProperties, strParam) > 0 Then
+    strParam = Mid(StrProperties, InStr(StrProperties, strParam))
+    strParam = Mid(strParam, InStr(strParam, "="))
+    strParam = Mid(strParam, 2, InStr(strParam, gb.Lf) - 2)   'exclude "=" and /n
+    Return strParam
+  Endif
+End
+
+
+Public Sub btnReverse_Click()
+'create a reverse audio track in the temp dir
+Dim blnFileExists As Boolean
+Dim strCommand As String
+Dim iReplay As Integer
+Dim fltFrameRate As Float
+
+  lblStatus.Foreground = Color.Red
+  lblStatus.Text = ""
+  strNameOfRevVideo = Mid(fileCh.SelectedPath, 1, RInStr(fileCh.SelectedPath, ".") - 1) & "Rev.mkv" 
+  If Exist(strNameOfRevVideo) Then
+    blnFileExists = True
+    iReplay = Message.Warning(strNameOfRevVideo & " already exist - do you want to delete it?", "Yes", "No")
+    If iReplay = 1 Then
+      Kill strNameOfRevVideo
+      blnFileExists = False
+    Else
+      lblStatus.Text = "Cannot proceed because " & strNameOfRevVideo & " already exists"
+    Endif
+  Endif
+  If DeleteWorkingDir() And Not blnFileExists Then  'need to ensure files & dirs have been dealt with
+    Mkdir fileCh.Dir & TEMP_DIR
+    Wait 1
+    fltFrameRate = CSingle(Val(strFrameRate))
+    fltFrameRate = fltFrameRate * vbSpeed.Value / 100
+    strFrameRate = CStr(Round(fltFrameRate, -1))
+    
+    If chkAudio.Value = True Then     'audio needs extracting & reversing
+      lblStatus.Text = "Please wait: Extracting audio track..."
+      Wait
+      Exec ["ffmpeg", "-i", fileCh.SelectedPath, "-vn", fileCh.Dir & TEMP_DIR & "/audio.wav"] Wait
+      Wait
+      lblStatus.Text = "Please wait: Reversing audio track.."
+      Exec ["sox", fileCh.Dir & TEMP_DIR & "/audio.wav", fileCh.Dir & TEMP_DIR & "/revIt.wav", "reverse"] Wait
+      Exec ["sox", fileCh.Dir & TEMP_DIR & "/revIt.wav", fileCh.Dir & TEMP_DIR & "/reversed.wav", "speed", vbSpeed.Value / 100] Wait
+    Endif
+    
+    lblStatus.Text = "Please wait: Extracting video track.."
+    Wait
+    Exec ["ffmpeg", "-i", fileCh.SelectedPath, "-an", "-q", "1", fileCh.Dir & TEMP_DIR & "/%05d.jpg"] Wait 
+    lblStatus.Text = "...vt extract done!"
+    strCommand = "cat $(ls -r " & fileCh.Dir & TEMP_DIR & "/*.jpg) | ffmpeg -f image2pipe -vcodec mjpeg -r "
+    strCommand &= strFrameRate
+    strCommand &= " -i - "
+    If chkAudio.Value = True Then     'include rev audio
+      strCommand &= "-i " & fileCh.Dir & TEMP_DIR & "/reversed.wav"
+    Endif
+    strCommand &= " -vcodec libx264 -preset slower -crf 18 -threads 0 -acodec flac "
+    strCommand &= strNameOfRevVideo
+    lblStatus.Text = "Please wait: creating reverse video File!"
+    Wait
+    Shell strCommand Wait
+    lblStatus.Foreground = Color.Black
+    lblStatus.Text = "...done!"
+    DeleteWorkingDir()    'clean up
+    btnReverse.Enabled = False
+    btnTestRev.Enabled = True
+  Endif
+
+Catch
+  Me.Text = "Error!"
+  lblStatus.Text = Error.Text
+End
+
+Public Function DeleteWorkingDir() As Boolean
+'delete the files & dir we use as temporary working files
+Dim file As String
+  
+  If Exist(fileCh.Dir & TEMP_DIR) Then
+    For Each file In RDir(fileCh.Dir & TEMP_DIR, "", gb.File)
+      Kill fileCh.Dir & TEMP_DIR & "/" & file
+    Next
+    Rmdir fileCh.Dir & TEMP_DIR
+  Endif
+  Return True
+Catch
+  Me.Text = "Error!"
+  lblStatus.Text = Error.Text
+End
+
+
+Public Sub btnTestRev_Click()
+'run our new reversed file in a media player
+
+  If strNameOfRevVideo <> "" Then
+    Exec [VIDEO_PLAYER, strNameOfRevVideo]
+  Endif
+Catch
+  Me.Text = "Error!"
+  lblStatus.Text = Error.Text
+End
+
+Public Sub vbSpeed_LostFocus()
+'limit %speed/framerate range to: 10-500%
+
+  If vbSpeed.Value < 10 Then
+    vbSpeed.Value = 10
+  Endif
+  If vbSpeed.Value > 500 Then
+    vbSpeed.Value = 500
+  Endif
+End

@@ -1,0 +1,14 @@
+* Wed May 17 2017 SteveDee <steve@faygate.plus.com> 0.0.3
+- Inc speed range
+
+* Wed May 17 2017 SteveDee <steve@faygate.plus.com> 0.0.2
+- Options added;
+- speed/frame rate
+- audio
+
+* Fri May 05 2017 steve <steve@faygate.plus.com> 0.0.5
+- Remove quotes around VIDEO_EDITOR
+
+* Fri May 05 2017 steve <steve@faygate.plus.com> 0.0.4
+- Initial release
+

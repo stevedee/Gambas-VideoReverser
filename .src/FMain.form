@@ -1,0 +1,63 @@
+# Gambas Form File 3.0
+
+{ Form Form
+  MoveScaled(0,0,156.25,80)
+  Text = (" a Video Reverser")
+  Icon = Picture["icon:/32/rewind"]
+  Resizable = False
+  Maximized = True
+  { lstProperties ListBox
+    MoveScaled(117,10,33,21)
+  }
+  { btnProperties Button
+    MoveScaled(80,5,27,5)
+    Text = ("1. List video properties")
+  }
+  { fileCh FileChooser
+    MoveScaled(0,1,78,75)
+    ShowDetailed = True
+  }
+  { TextArea1 TextArea
+    MoveScaled(79,33,72,43)
+  }
+  { btnReverse Button
+    MoveScaled(80,20,27,5)
+    Enabled = False
+    Text = ("3. Reverse Video")
+  }
+  { lblStatus Label
+    MoveScaled(0,77,12,3)
+    Visible = False
+    Border = Border.Sunken
+  }
+  { btnTestRev Button
+    MoveScaled(80,26,27,5)
+    Enabled = False
+    Text = ("4. Test reversed video")
+  }
+  { Label1 Label
+    MoveScaled(80,1,27,4)
+    Font = Font["Bold,+1"]
+    Foreground = Color.DarkGreen
+    Text = ("Select a video file, then:-")
+  }
+  { vbSpeed ValueBox
+    MoveScaled(97,12,5,3)
+    ToolTip = ("want to slow down the final video?")
+    Text = ("100")
+  }
+  { TextLabel1 TextLabel
+    MoveScaled(80,12,16,3)
+    Text = ("2. playback speed")
+    Alignment = Align.TopRight
+  }
+  { chkAudio CheckBox
+    MoveScaled(82,16,22,3)
+    Enabled = False
+    Text = ("include audio")
+  }
+  { Label2 Label
+    MoveScaled(102,12,3,3)
+    Text = ("%")
+  }
+}

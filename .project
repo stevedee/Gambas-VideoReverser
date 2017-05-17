@@ -1,0 +1,21 @@
+# Gambas Project File 3.0
+# Compiled with Gambas 3.9.2
+Title=VideoReverse
+Startup=FMain
+Version=0.0.3
+Component=gb.image
+Component=gb.gui
+Component=gb.form
+Description="Reverse play direction of a video"
+TabSize=2
+Language=en_US
+Maintainer=SteveDee
+Address=steve@faygate.plus.com
+Url=http://captainbodgit.blogspot.co.uk
+License=General Public License
+PackageName=videoreverse-0.0.3
+Packager=1
+Systems=debian
+Menus=debian:"Applications/Video"
+Categories=debian:"Video"
+Groups=debian:"video"
